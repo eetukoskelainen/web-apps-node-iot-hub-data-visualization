@@ -2,7 +2,7 @@
  * IoT Gateway BLE Script - Microsoft Sample Code - Copyright (c) 2019 - Licensed MIT
  */
 
-const { EventHubClient, EventPosition } = require('@azure/event-hubs');
+const { EventHubClient, EventPosition } = require("@azure/event-hubs");
 
 class EventHubReader {
   constructor(connectionString, consumerGroup) {
@@ -14,26 +14,42 @@ class EventHubReader {
 
   async startReadMessage(startReadMessageCallback) {
     try {
-      const client = await EventHubClient.createFromIotHubConnectionString(this.connectionString);
-      console.log('Successfully created the EventHub Client from IoT Hub connection string.');
+      const client = await EventHubClient.createFromIotHubConnectionString(
+        this.connectionString
+      );
+      console.log(
+        "Successfully created the EventHub Client from IoT Hub connection string."
+      );
       this.eventHubClient = client;
 
       const partitionIds = await this.eventHubClient.getPartitionIds();
-      console.log('The partition ids are: ', partitionIds);
+      console.log("The partition ids are: ", partitionIds);
 
-      const onError = (err) => {
+      const onError = err => {
         console.error(err.message || err);
       };
 
-      const onMessage = (message) => {
-        const deviceId = message.annotations['iothub-connection-device-id'];
-        return startReadMessageCallback(message.body, message.enqueuedTimeUtc, deviceId);
+      const onMessage = message => {
+        const messageBody = {
+          temperature: message.body.machine.temperature,
+          humidity: message.body.machine.pressure,
+          MessageDate: message.body.timeCreated
+        };
+
+        const deviceId = message.annotations["iothub-connection-device-id"];
+        return startReadMessageCallback(
+          messageBody,
+          message.enqueuedTimeUtc,
+          deviceId
+        );
       };
 
-      this.receiveHandlers = partitionIds.map(id => this.eventHubClient.receive(id, onMessage, onError, {
-        eventPosition: EventPosition.fromEnqueuedTime(Date.now()),
-        consumerGroup: this.consumerGroup,
-      }));
+      this.receiveHandlers = partitionIds.map(id =>
+        this.eventHubClient.receive(id, onMessage, onError, {
+          eventPosition: EventPosition.fromEnqueuedTime(Date.now()),
+          consumerGroup: this.consumerGroup
+        })
+      );
     } catch (ex) {
       console.error(ex.message || ex);
     }
@@ -42,7 +58,7 @@ class EventHubReader {
   // Close connection to Event Hub.
   async stopReadMessage() {
     const disposeHandlers = [];
-    this.receiveHandlers.forEach((receiveHandler) => {
+    this.receiveHandlers.forEach(receiveHandler => {
       disposeHandlers.push(receiveHandler.stop());
     });
     await Promise.all(disposeHandlers);
